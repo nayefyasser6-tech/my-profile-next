@@ -1,7 +1,6 @@
 // Prisma Schema for Neon Postgres & Auth.js
 datasource db {
   provider = "postgresql"
- 
 }
 
 generator client {
