@@ -28,20 +28,20 @@ interface PortfolioContextType {
   selectedProjectSlug: string | null;
   navigateTo: (route: RoutePath, slug?: string) => void;
   t: Translations;
-  
+
   // Projects CRUD
   projects: Project[];
   addProject: (project: Omit<Project, 'id' | 'createdAt'>) => void;
   updateProject: (id: string, updates: Partial<Project>) => void;
   deleteProject: (id: string) => void;
   getProjectBySlug: (slug: string) => Project | undefined;
-  
+
   // Messages CRUD
   messages: ContactMessage[];
   addMessage: (msg: Omit<ContactMessage, 'id' | 'status' | 'createdAt'>) => void;
   markMessageStatus: (id: string, status: 'UNREAD' | 'READ') => void;
   deleteMessage: (id: string) => void;
-  
+
   // Admin Auth
   adminSession: AdminUserSession;
   loginAdmin: (username: string, pass: string) => boolean;
@@ -63,113 +63,90 @@ const STORAGE_KEYS = {
   AUTH: 'elmutasem_portfolio_admin_auth',
 };
 
+// القيم الافتراضية الآمنة (تعمل على السيرفر)
+const DEFAULT_LANGUAGE: Language = 'en';
+const DEFAULT_THEME: Theme = 'dark';
+const DEFAULT_SESSION: AdminUserSession = {
+  id: '',
+  username: '',
+  name: 'Elmutasem',
+  email: 'nayefyaser6@gmail.com',
+  token: '',
+  isAuthenticated: false,
+};
+
 export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  // 1. Language state
-  const [language, setLanguageState] = useState<Language>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.LANG) as Language;
-    return saved && ['en', 'ar', 'tr'].includes(saved) ? saved : 'en';
-  });
-
-  // 2. Theme state
-  const [theme, setThemeState] = useState<Theme>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.THEME) as Theme;
-    return saved === 'light' ? 'light' : 'dark';
-  });
-
-  // 3. Navigation routing
+  // ⚠️ كل قيم useState تبدأ بقيم افتراضية آمنة (لا localStorage)
+  const [language, setLanguageState] = useState<Language>(DEFAULT_LANGUAGE);
+  const [theme, setThemeState] = useState<Theme>(DEFAULT_THEME);
   const [currentRoute, setCurrentRoute] = useState<RoutePath>('home');
   const [selectedProjectSlug, setSelectedProjectSlug] = useState<string | null>(null);
-
-  // 4. Projects state with localStorage persistence
-  const [projects, setProjects] = useState<Project[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.PROJECTS);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
-        }
-      }
-    } catch {
-      // fallback
-    }
-    return INITIAL_PROJECTS;
-  });
-
-  // 5. Messages state with localStorage persistence
-  const [messages, setMessages] = useState<ContactMessage[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.MESSAGES);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          return parsed;
-        }
-      }
-    } catch {
-      // fallback
-    }
-    return INITIAL_MESSAGES;
-  });
-
-  // 6. Admin auth session
-  const [adminSession, setAdminSession] = useState<AdminUserSession>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.AUTH);
-      if (saved) {
-        return JSON.parse(saved);
-      }
-    } catch {
-      // fallback
-    }
-    return {
-      id: '',
-      username: '',
-      name: 'Elmutasem',
-      email: 'nayefyaser6@gmail.com',
-      token: '',
-      isAuthenticated: false,
-    };
-  });
-
-  // 7. Toasts notification system
+  const [projects, setProjects] = useState<Project[]>(INITIAL_PROJECTS);
+  const [messages, setMessages] = useState<ContactMessage[]>(INITIAL_MESSAGES);
+  const [adminSession, setAdminSession] = useState<AdminUserSession>(DEFAULT_SESSION);
   const [toasts, setToasts] = useState<ToastInfo[]>([]);
+  const [isHydrated, setIsHydrated] = useState(false);
 
- const showToast = (title: string, description?: string, type: 'success' | 'info' | 'error' = 'info') => {
-    // eslint-disable-next-line react-hooks/purity
-    const id = Date.now().toString() + Math.random().toString(36).substring(2, 5);
-    setToasts((prev) => [...prev, { id, title, description, type }]);
-    setTimeout(() => {
-      removeToast(id);
-    }, 4500);
-  };
+  // ✅ الخطوة 1: بعد أول render في المتصفح، اقرأ من localStorage
+  useEffect(() => {
+    try {
+      const savedLang = localStorage.getItem(STORAGE_KEYS.LANG) as Language | null;
+      if (savedLang && ['en', 'ar', 'tr'].includes(savedLang)) {
+        setLanguageState(savedLang);
+      }
 
-  const removeToast = (id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
-  };
+      const savedTheme = localStorage.getItem(STORAGE_KEYS.THEME) as Theme | null;
+      if (savedTheme === 'light' || savedTheme === 'dark') {
+        setThemeState(savedTheme);
+      }
 
-  // Sync Language with DOM dir and lang attributes
-  const setLanguage = (newLang: Language) => {
-    setLanguageState(newLang);
-    localStorage.setItem(STORAGE_KEYS.LANG, newLang);
-  };
+      const savedProjects = localStorage.getItem(STORAGE_KEYS.PROJECTS);
+      if (savedProjects) {
+        const parsed = JSON.parse(savedProjects);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setProjects(parsed);
+        }
+      }
+
+      const savedMessages = localStorage.getItem(STORAGE_KEYS.MESSAGES);
+      if (savedMessages) {
+        const parsed = JSON.parse(savedMessages);
+        if (Array.isArray(parsed)) {
+          setMessages(parsed);
+        }
+      }
+
+      const savedAuth = localStorage.getItem(STORAGE_KEYS.AUTH);
+      if (savedAuth) {
+        setAdminSession(JSON.parse(savedAuth));
+      }
+    } catch {
+      // تجاهل الأخطاء بصمت
+    }
+    setIsHydrated(true);
+  }, []);
+
+  // ✅ الخطوة 2: بعد hydration، احفظ التغييرات في localStorage
+  useEffect(() => {
+    if (!isHydrated) return;
+    localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(projects));
+  }, [projects, isHydrated]);
 
   useEffect(() => {
+    if (!isHydrated) return;
+    localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(messages));
+  }, [messages, isHydrated]);
+
+  // ✅ الخطوة 3: مزامنة اللغة مع DOM (يجب أن يكون بعد hydration)
+  useEffect(() => {
+    if (!isHydrated) return;
     document.documentElement.lang = language;
     document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
-  }, [language]);
+  }, [language, isHydrated]);
 
-  // Sync Theme
-  const setTheme = (newTheme: Theme) => {
-    setThemeState(newTheme);
-    localStorage.setItem(STORAGE_KEYS.THEME, newTheme);
-  };
-
-  const toggleTheme = () => {
-    setTheme(theme === 'dark' ? 'light' : 'dark');
-  };
-
+  // ✅ الخطوة 4: مزامنة الثيم مع DOM
   useEffect(() => {
+    if (!isHydrated) return;
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
       document.body.className = 'bg-[#0a0f1d] text-[#F1F5F9] antialiased selection:bg-[#a855f7]/30 selection:text-[#38bdf8]';
@@ -177,28 +154,56 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
       document.documentElement.classList.remove('dark');
       document.body.className = 'bg-[#FAF7F2] text-[#2C2523] antialiased selection:bg-[#C8A97E]/30 selection:text-[#8C6D37]';
     }
-  }, [theme]);
+  }, [theme, isHydrated]);
 
-  // Sync Projects to localStorage
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(projects));
-  }, [projects]);
+  // Toasts
+  const removeToast = (id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
 
-  // Sync Messages to localStorage
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(messages));
-  }, [messages]);
+  const showToast = (
+    title: string,
+    description?: string,
+    type: 'success' | 'info' | 'error' = 'info'
+  ) => {
+    const id = Date.now().toString() + Math.random().toString(36).substring(2, 5);
+    setToasts((prev) => [...prev, { id, title, description, type }]);
+    setTimeout(() => {
+      removeToast(id);
+    }, 4500);
+  };
 
-  // Navigation helper
+  // Setters
+  const setLanguage = (newLang: Language) => {
+    setLanguageState(newLang);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_KEYS.LANG, newLang);
+    }
+  };
+
+  const setTheme = (newTheme: Theme) => {
+    setThemeState(newTheme);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_KEYS.THEME, newTheme);
+    }
+  };
+
+  const toggleTheme = () => {
+    setTheme(theme === 'dark' ? 'light' : 'dark');
+  };
+
+  // Navigation
   const navigateTo = (route: RoutePath, slug?: string) => {
     setCurrentRoute(route);
     if (slug) {
       setSelectedProjectSlug(slug);
     }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
-  // Projects CRUD operations
+  // Projects CRUD
   const addProject = (projectData: Omit<Project, 'id' | 'createdAt'>) => {
     const newProject: Project = {
       ...projectData,
@@ -225,7 +230,7 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
     return projects.find((p) => p.slug === slug);
   };
 
-  // Messages CRUD operations
+  // Messages CRUD
   const addMessage = (msgData: Omit<ContactMessage, 'id' | 'status' | 'createdAt'>) => {
     const newMessage: ContactMessage = {
       ...msgData,
@@ -248,10 +253,9 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
     showToast('Message Deleted', 'Contact inquiry permanently purged.', 'info');
   };
 
-  // Admin Auth operations
+  // Admin Auth
   const loginAdmin = (username: string, pass: string): boolean => {
-    // Validates credentials; includes instant demo fallback
-    const valid = (username.trim().length > 0 && pass.trim().length > 0);
+    const valid = username.trim().length > 0 && pass.trim().length > 0;
     if (valid) {
       const session: AdminUserSession = {
         id: 'admin-01',
@@ -262,7 +266,9 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
         isAuthenticated: true,
       };
       setAdminSession(session);
-      localStorage.setItem(STORAGE_KEYS.AUTH, JSON.stringify(session));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(STORAGE_KEYS.AUTH, JSON.stringify(session));
+      }
       showToast('Authentication Verified', 'Welcome back, Elmutasem.', 'success');
       return true;
     }
@@ -271,16 +277,10 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
   };
 
   const logoutAdmin = () => {
-    const emptySession: AdminUserSession = {
-      id: '',
-      username: '',
-      name: 'Elmutasem',
-      email: 'nayefyaser6@gmail.com',
-      token: '',
-      isAuthenticated: false,
-    };
-    setAdminSession(emptySession);
-    localStorage.removeItem(STORAGE_KEYS.AUTH);
+    setAdminSession(DEFAULT_SESSION);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(STORAGE_KEYS.AUTH);
+    }
     showToast('Session Terminated', 'Logged out of CMS.', 'info');
     navigateTo('home');
   };
