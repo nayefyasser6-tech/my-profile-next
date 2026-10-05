@@ -1,0 +1,76 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  }
+
+  [dir="rtl"] {
+    font-family: 'Cairo', 'Plus Jakarta Sans', system-ui, sans-serif;
+  }
+
+  .font-serif-display {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+  }
+}
+
+/* Minimal scrollbar with dual-theme styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(197, 168, 128, 0.35);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(197, 168, 128, 0.6);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(56, 189, 248, 0.35);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(168, 85, 247, 0.6);
+}
+
+/* Dual-Theme Canvas Backgrounds */
+.bg-warm-canvas {
+  background-color: #FAF7F2;
+}
+
+/* Cyberpunk Dark Mode: Very Deep Navy Blue (#0a0f1d), not pure black */
+.dark .bg-warm-canvas {
+  background-color: #0a0f1d;
+}
+
+/* Interactive Card & Button Hover Transitions */
+.interactive-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.interactive-hover:hover {
+  transform: scale(1.05);
+}
+
+/* Cyberpunk Glow and Accent Utilities */
+.cyber-glow-blue {
+  box-shadow: 0 0 25px rgba(56, 189, 248, 0.35);
+}
+
+.cyber-glow-purple {
+  box-shadow: 0 0 25px rgba(168, 85, 247, 0.35);
+}
+
+.cyber-glow-combo {
+  box-shadow: 0 0 30px rgba(56, 189, 248, 0.25), 0 0 15px rgba(168, 85, 247, 0.25);
+}
+
+
